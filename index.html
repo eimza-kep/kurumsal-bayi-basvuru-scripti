@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kurumsal Bayilik ve Franchise Başvuru Portalı | B2B Acente Ağı</title>
+    <style>
+        :root {
+            --primary: #0284c7;
+            --primary-hover: #0369a1;
+            --secondary: #0f172a;
+            --bg: #f8fafc;
+            --card: #ffffff;
+            --border: #e2e8f0;
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            --gold: #d97706;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+        body { background: var(--bg); color: var(--text-main); line-height: 1.5; padding: 32px 16px; min-height: 100vh; }
+        .container { max-width: 900px; margin: 0 auto; }
+
+        .header {
+            text-align: center; margin-bottom: 24px; background: white; padding: 30px 20px;
+            border-radius: 12px; border: 1px solid var(--border); box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+            position: relative; overflow: hidden;
+        }
+        .header::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px; background: var(--gold); }
+        .header-badge {
+            display: inline-block; background: #fef3c7; color: #92400e;
+            font-size: 0.78rem; font-weight: 700; padding: 4px 12px; border-radius: 999px; margin-bottom: 10px;
+        }
+        .header h1 { font-size: 1.6rem; color: var(--secondary); margin-bottom: 8px; font-weight: 800; }
+        .header p { font-size: 0.9rem; color: var(--text-muted); max-width: 680px; margin: 0 auto; }
+
+        .card {
+            background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+            padding: 26px; margin-bottom: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+        }
+        .card-title {
+            font-size: 1.05rem; font-weight: 700; color: var(--secondary); margin-bottom: 18px;
+            display: flex; align-items: center; gap: 8px; border-bottom: 2px solid #f1f5f9; padding-bottom: 8px;
+        }
+
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+        .form-group { display: flex; flex-direction: column; gap: 6px; }
+        .form-group.full { grid-column: span 2; }
+        label { font-size: 0.83rem; font-weight: 600; color: #334155; }
+        label span.req { color: #dc2626; }
+
+        input, select, textarea {
+            width: 100%; padding: 10px 14px; border: 1px solid var(--border); border-radius: 8px;
+            font-size: 0.88rem; outline: none; background: #f8fafc; color: var(--text-main);
+        }
+        input:focus, select:focus, textarea:focus { border-color: var(--primary); background: white; box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.1); }
+        textarea { min-height: 85px; resize: vertical; }
+
+        .btn-submit {
+            width: 100%; background: var(--gold); color: white; border: none; padding: 14px;
+            border-radius: 8px; font-weight: 700; font-size: 1rem; cursor: pointer; transition: all 0.2s;
+        }
+        .btn-submit:hover { background: #b45309; }
+
+        .result-box {
+            display: none; background: white; border: 2px solid #fde68a; border-radius: 12px;
+            padding: 32px 24px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.05);
+        }
+
+        .summary-sheet {
+            border: 2px solid #0f172a; padding: 24px; border-radius: 8px; background: #fff; margin-top: 20px;
+            font-family: 'Times New Roman', Times, serif; line-height: 1.6; font-size: 0.95rem;
+        }
+
+        @media (max-width: 640px) {
+            .form-grid { grid-template-columns: 1fr; }
+            .form-group.full { grid-column: span 1; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header">
+        <div class="header-badge">B2B BAYİLİK & FRANCHISE AĞI</div>
+        <h1>Bayilik ve Franchise Ön Başvuru Portalı</h1>
+        <p>Büyüyen bayi ağımızın ve güçlü markamızın bir parçası olmak için lütfen işletme, lokasyon ve finansal kapasite bilgilerinizi iletiniz.</p>
+    </div>
+
+    <form id="bayiForm" onsubmit="handleBayiSubmit(event)">
+        <!-- 1. Girişimci / Şirket Bilgileri -->
+        <div class="card">
+            <h2 class="card-title">🏢 1. Girişimci & Şirket Bilgileri</h2>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>Başvuru Türü <span class="req">*</span></label>
+                    <select id="applicationType" required>
+                        <option value="Münhasır Bayilik (Tek Yetkili)">Münhasır Bayilik (Tek Yetkili)</option>
+                        <option value="Franchise Şube Ortaklığı">Franchise Şube Ortaklığı</option>
+                        <option value="Mevcut Mağazaya Bayilik Ekleme">Mevcut Mağazaya Bayilik Ekleme (Shop-in-Shop)</option>
+                        <option value="Bölge Dağıtıcı Distribütörlük">Bölge Dağıtıcı Distribütörlük</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Şirket Unvanı / Ad Soyad <span class="req">*</span></label>
+                    <input type="text" id="applicantTitle" required placeholder="Firma unvanı veya şahıs adı">
+                </div>
+                <div class="form-group">
+                    <label>Yetkili Adı Soyadı <span class="req">*</span></label>
+                    <input type="text" id="contactName" required placeholder="Şirket ortağı / imza yetkilisi">
+                </div>
+                <div class="form-group">
+                    <label>VKN / TCKN <span class="req">*</span></label>
+                    <input type="text" id="taxId" required placeholder="10 haneli VKN veya 11 haneli TCKN" maxlength="11">
+                </div>
+                <div class="form-group">
+                    <label>İletişim Telefonu <span class="req">*</span></label>
+                    <input type="tel" id="contactPhone" required placeholder="05XX XXX XX XX">
+                </div>
+                <div class="form-group">
+                    <label>E-Posta Adresi <span class="req">*</span></label>
+                    <input type="email" id="contactEmail" required placeholder="ornek@domain.com">
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. Lokasyon & Mağaza Bilgileri -->
+        <div class="card">
+            <h2 class="card-title">📍 2. Hedef Lokasyon ve Mağaza Kriterleri</h2>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>Hedeflenen İl ve İlçe <span class="req">*</span></label>
+                    <input type="text" id="targetLocation" required placeholder="Örn: İzmir / Bornova">
+                </div>
+                <div class="form-group">
+                    <label>Mağaza Mülkiyet Durumu <span class="req">*</span></label>
+                    <select id="propertyStatus" required>
+                        <option value="Mülk Kendimize Ait">Mülk Kendimize Ait</option>
+                        <option value="Kiralanmış Durumda">Kiralanmış Durumda</option>
+                        <option value="Henüz Yer Tutulmadı (Arayışta)">Henüz Yer Tutulmadı (Arayışta)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Mağaza / Dükkan Alanı (m²) <span class="req">*</span></label>
+                    <input type="number" id="storeArea" required placeholder="Örn: 150">
+                </div>
+                <div class="form-group">
+                    <label>Cadde Cephe Genişliği (Metre)</label>
+                    <input type="number" id="storeFrontage" placeholder="Örn: 8 metre">
+                </div>
+                <div class="form-group full">
+                    <label>Lokasyon Açıklaması / Mevcut Durum</label>
+                    <input type="text" id="locationDetails" placeholder="Ana cadde üzeri, AVM içi, sanayi sitesi, yaya trafiği yoğun bölge vb.">
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. Finansal Kapasite ve Tecrübe -->
+        <div class="card">
+            <h2 class="card-title">💼 3. Finansal Kapasite ve Ticari Tecrübe</h2>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>Ayırdığınız Yatırım Bütçesi (TL) <span class="req">*</span></label>
+                    <select id="investmentBudget" required>
+                        <option value="500.000 TL - 1.000.000 TL">500.000 TL - 1.000.000 TL</option>
+                        <option value="1.000.000 TL - 2.500.000 TL">1.000.000 TL - 2.500.000 TL</option>
+                        <option value="2.500.000 TL - 5.000.000 TL">2.500.000 TL - 5.000.000 TL</option>
+                        <option value="5.000.000 TL ve Üzeri">5.000.000 TL ve Üzeri</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Banka Teminat Mektubu Kapasitesi <span class="req">*</span></label>
+                    <select id="collateralCapacity" required>
+                        <option value="1.000.000 TL ve üzeri teminat sağlayabilirim">1.000.000 TL ve üzeri teminat sağlayabilirim</option>
+                        <option value="500.000 - 1.000.000 TL arası">500.000 - 1.000.000 TL arası</option>
+                        <option value="Gayrimenkul İpoteği Verebilirim">Gayrimenkul İpoteği Verebilirim</option>
+                        <option value="Peşin / DBS / Kredi Kartı ile çalışmak isterim">DBS / Peşin Nakit Tercih Ediyorum</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Ticari Sektör Deneyiminiz (Yıl)</label>
+                    <select id="experienceYears">
+                        <option value="1-3 Yıl">1 - 3 Yıl</option>
+                        <option value="3-5 Yıl">3 - 5 Yıl</option>
+                        <option value="5-10 Yıl">5 - 10 Yıl</option>
+                        <option value="10+ Yıl">10 Yıldan Fazla</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>İlk Yıl Hedeflenen Ciro (Tahmini TL)</label>
+                    <input type="text" id="targetAnnualRevenue" placeholder="Örn: 10.000.000 TL">
+                </div>
+                <div class="form-group full">
+                    <label>Girişimcilik Vizyonunuz ve Neden Bizim Markamız? <span class="req">*</span></label>
+                    <textarea id="businessVision" required placeholder="Bölgenizdeki pazar potansiyeli, mevcut müşteri ağınız ve hedefleriniz hakkında kısa bilgi veriniz..."></textarea>
+                </div>
+            </div>
+        </div>
+
+        <button type="submit" class="btn-submit" id="submitBtn">
+            <span>🚀 Bayilik Ön Başvurusunu Tamamla</span>
+        </button>
+    </form>
+
+    <!-- Success View -->
+    <div class="result-box" id="resultBox">
+        <div style="text-align: center; margin-bottom: 20px;">
+            <div style="font-size: 2.8rem; margin-bottom: 8px;">🤝</div>
+            <h2 style="color: var(--secondary);">Bayilik Ön Başvurunuz Alındı</h2>
+            <p style="color: var(--text-muted); font-size: 0.9rem;">
+                Dosyanız Bayi Geliştirme Komitesi tarafından incelemeye alınmıştır.
+            </p>
+            <div style="margin: 14px 0; font-size: 1.4rem; font-weight: 800; color: var(--gold);" id="trackingCodeDisplay">BAYI-2026-0000</div>
+        </div>
+
+        <div class="summary-sheet" id="printSheet">
+            <div style="text-align:center; font-weight:bold; font-size: 1.2rem; margin-bottom: 16px; text-decoration: underline;">
+                KURUMSAL BAYİLİK VE FRANCHISE ÖN BAŞVURU FORMU
+            </div>
+            <p><b>Başvuru Takip No:</b> <span id="prCode"></span></p>
+            <p><b>Başvuru Türü:</b> <span id="prAppType"></span></p>
+            <p><b>Firma / Aday:</b> <span id="prTitle"></span> (VKN: <span id="prVkn"></span>)</p>
+            <p><b>Yetkili:</b> <span id="prContact"></span> | <span id="prPhone"></span> | <span id="prEmail"></span></p>
+            <br>
+            <p><b>Hedef Lokasyon:</b> <span id="prLoc"></span></p>
+            <p><b>Mağaza Durumu:</b> <span id="prStore"></span> (<span id="prArea"></span> m²)</p>
+            <p><b>Yatırım Bütçesi:</b> <span id="prBudget"></span></p>
+            <p><b>Teminat Kapasitesi:</b> <span id="prCollateral"></span></p>
+            <p><b>Sektörel Deneyim:</b> <span id="prExp"></span></p>
+            <p><b>Hedef Ciro:</b> <span id="prRev"></span></p>
+            <br>
+            <p><b>Girişimci Vizyonu:</b></p>
+            <p style="text-indent: 20px; margin-top: 6px;" id="prVision"></p>
+            <br>
+            <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-top: 24px;">
+                <div><b>Başvuru Tarihi:</b> <span id="prDate"></span></div>
+                <div style="text-align: right;">
+                    <b>Başvuru Sahibi</b><br>
+                    <span id="prSigner"></span><br>
+                    İmza / Kaşe
+                </div>
+            </div>
+        </div>
+
+        <div style="margin-top: 24px; display: flex; justify-content: center; gap: 12px;">
+            <button class="btn-submit" style="width: auto; padding: 10px 22px; background: #0f172a;" onclick="window.print()">🖨️ Başvuru Formunu Yazdır / PDF</button>
+            <button class="btn-submit" style="width: auto; padding: 10px 22px; background: #e2e8f0; color: #334155;" onclick="location.reload()">➕ Yeni Başvuru</button>
+        </div>
+    </div>
+</div>
+
+<script>
+async function handleBayiSubmit(e) {
+    e.preventDefault();
+    const btn = document.getElementById('submitBtn');
+    btn.disabled = true;
+    btn.innerText = '⏳ İletiliyor...';
+
+    const payload = {
+        application_type: document.getElementById('applicationType').value,
+        applicant_title: document.getElementById('applicantTitle').value.trim(),
+        contact_name: document.getElementById('contactName').value.trim(),
+        tax_id: document.getElementById('taxId').value.trim(),
+        contact_phone: document.getElementById('contactPhone').value.trim(),
+        contact_email: document.getElementById('contactEmail').value.trim(),
+        target_location: document.getElementById('targetLocation').value.trim(),
+        property_status: document.getElementById('propertyStatus').value,
+        store_area: parseInt(document.getElementById('storeArea').value) || 0,
+        store_frontage: parseFloat(document.getElementById('storeFrontage').value) || 0,
+        location_details: document.getElementById('locationDetails').value.trim(),
+        investment_budget: document.getElementById('investmentBudget').value,
+        collateral_capacity: document.getElementById('collateralCapacity').value,
+        experience_years: document.getElementById('experienceYears').value,
+        target_annual_revenue: document.getElementById('targetAnnualRevenue').value.trim(),
+        business_vision: document.getElementById('businessVision').value.trim(),
+        status: 'Başvuru Alındı',
+        created_at: new Date().toISOString()
+    };
+
+    let trackingCode = 'BAYI-2026-' + Math.floor(1000 + Math.random() * 9000);
+
+    try {
+        const res = await fetch('/api/bayi-basvuru', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        if (res.ok) {
+            const data = await res.json();
+            if (data.tracking_code) trackingCode = data.tracking_code;
+        }
+    } catch (err) {
+        const local = JSON.parse(localStorage.getItem('bayi_basvurular') || '[]');
+        payload.tracking_code = trackingCode;
+        local.push(payload);
+        localStorage.setItem('bayi_basvurular', JSON.stringify(local));
+    }
+
+    document.getElementById('bayiForm').style.display = 'none';
+    document.getElementById('resultBox').style.display = 'block';
+    document.getElementById('trackingCodeDisplay').innerText = trackingCode;
+
+    // Fill sheet
+    document.getElementById('prCode').innerText = trackingCode;
+    document.getElementById('prAppType').innerText = payload.application_type;
+    document.getElementById('prTitle').innerText = payload.applicant_title;
+    document.getElementById('prVkn').innerText = payload.tax_id;
+    document.getElementById('prContact').innerText = payload.contact_name;
+    document.getElementById('prPhone').innerText = payload.contact_phone;
+    document.getElementById('prEmail').innerText = payload.contact_email;
+    document.getElementById('prLoc').innerText = payload.target_location;
+    document.getElementById('prStore').innerText = payload.property_status;
+    document.getElementById('prArea').innerText = payload.store_area;
+    document.getElementById('prBudget').innerText = payload.investment_budget;
+    document.getElementById('prCollateral').innerText = payload.collateral_capacity;
+    document.getElementById('prExp').innerText = payload.experience_years;
+    document.getElementById('prRev').innerText = payload.target_annual_revenue || 'Belirtilmedi';
+    document.getElementById('prVision').innerText = payload.business_vision;
+    document.getElementById('prDate').innerText = new Date().toLocaleDateString('tr-TR');
+    document.getElementById('prSigner').innerText = payload.contact_name;
+}
+</script>
+
+</body>
+</html>
