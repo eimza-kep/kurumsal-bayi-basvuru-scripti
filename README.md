@@ -77,6 +77,19 @@ python scripts/test_bayi.py
 
 ---
 
+## 🌐 Kurumsal & E-Dönüşüm Açık Kaynak Ekosistemi
+
+Bu bayilik ve franchise başvuru portali, [@eimza-kep](https://github.com/eimza-kep) açık kaynak ekosisteminin B2B kanal yönetimi bileşenidir. İlgili diğer araçlar:
+
+* 🏢 [kobi-finans-yonetim-excel-sablonlari](https://github.com/eimza-kep/kobi-finans-yonetim-excel-sablonlari) - Bayi cari hesap takibi, teminat mektubu ve vade yaşlandırma şablonları.
+* 📨 [kep-adresi-dogrulayici](https://github.com/eimza-kep/kep-adresi-dogrulayici) - Aday bayilerin resmi kurumsal KEP adresi sözdizim ve KEPHS kontrolü.
+* 📄 [python-pdf-eimza-dogrulayici](https://github.com/eimza-kep/python-pdf-eimza-dogrulayici) - Karşılıklı imzalanan dijital bayilik ve gizlilik (NDA) sözleşmelerini doğrulama aracı.
+* 🔒 [kurumsal-kvkk-basvuru-scripti](https://github.com/eimza-kep/kurumsal-kvkk-basvuru-scripti) - Bayi yetkilisi kişisel verileri aydınlatma ve açık rıza portali.
+* 🌟 [awesome-turkiye-e-donusum](https://github.com/eimza-kep/awesome-turkiye-e-donusum) - Türkiye e-Dönüşüm açık kaynak araçları ve kütüphaneleri kürasyonu.
+
+---
+
 ## ⚖️ Lisans
 
 Bu proje [MIT Lisansı](LICENSE) kapsamında açık kaynak olarak sunulmuştur.
+
