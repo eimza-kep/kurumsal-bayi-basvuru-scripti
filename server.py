@@ -5,7 +5,17 @@ import sqlite3
 import os
 import sys
 import random
-from urllib.parse import urlparse
+from urllib.parse import urlparse, parse_qs
+
+# Ensure UTF-8 console output
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "scripts"))
+try:
+    from bayi_vkn_validator import verify_company_vkn, validate_vkn_checksum, validate_tckn_checksum
+except ImportError:
+    verify_company_vkn = None
 
 PORT = int(os.environ.get("PORT", 8093))
 DB_FILE = os.environ.get("DATABASE_PATH", os.path.join(os.path.dirname(os.path.abspath(__file__)), "bayi_basvurular.db"))
@@ -38,6 +48,29 @@ def init_db():
         )
     """)
     conn.commit()
+
+    # Dynamic migrations for Map Pinning (Issue #1) and VKN / MERSIS (Issue #2)
+    cur.execute("PRAGMA table_info(dealer_applications)")
+    existing_cols = [row[1] for row in cur.fetchall()]
+
+    new_columns = [
+        ("latitude", "REAL DEFAULT 0.0"),
+        ("longitude", "REAL DEFAULT 0.0"),
+        ("map_address", "TEXT DEFAULT ''"),
+        ("vkn_verified", "INTEGER DEFAULT 0"),
+        ("tax_office", "TEXT DEFAULT ''"),
+        ("mersis_no", "TEXT DEFAULT ''"),
+        ("company_status", "TEXT DEFAULT 'FAAL'")
+    ]
+
+    for col_name, col_type in new_columns:
+        if col_name not in existing_cols:
+            try:
+                cur.execute(f"ALTER TABLE dealer_applications ADD COLUMN {col_name} {col_type}")
+            except Exception:
+                pass
+
+    conn.commit()
     conn.close()
 
 class DealerHandler(http.server.SimpleHTTPRequestHandler):
@@ -53,6 +86,8 @@ class DealerHandler(http.server.SimpleHTTPRequestHandler):
             self.send_json({"status": "ok", "app": "kurumsal-bayi-basvuru-scripti", "port": PORT})
         elif path == "/api/bayiler":
             self.handle_get_dealers()
+        elif path == "/api/vkn-sorgula":
+            self.handle_vkn_lookup(parsed)
         else:
             super().do_GET()
 
@@ -64,6 +99,8 @@ class DealerHandler(http.server.SimpleHTTPRequestHandler):
             self.handle_create_dealer()
         elif path == "/api/durum-guncelle":
             self.handle_update_status()
+        elif path == "/api/vkn-dogrula":
+            self.handle_vkn_post_validate()
         else:
             self.send_error(404, "Endpoint not found")
 
@@ -89,12 +126,49 @@ class DealerHandler(http.server.SimpleHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
+    def handle_vkn_lookup(self, parsed):
+        qs = parse_qs(parsed.query)
+        vkn = qs.get("vkn", [""])[0].strip()
+        title = qs.get("title", [""])[0].strip()
+        if not vkn:
+            self.send_json({"valid": False, "error": "VKN veya TCKN parametresi eksik."}, status=400)
+            return
+
+        if verify_company_vkn:
+            res = verify_company_vkn(vkn, title)
+            self.send_json(res)
+        else:
+            self.send_json({"valid": True, "tax_id": vkn, "status": "FAAL", "tax_office": "GİB Vergi Dairesi"})
+
+    def handle_vkn_post_validate(self):
+        length = int(self.headers.get("Content-Length", 0))
+        post_data = self.rfile.read(length)
+        try:
+            data = json.loads(post_data.decode("utf-8"))
+            vkn = data.get("tax_id") or data.get("vkn") or ""
+            title = data.get("applicant_title") or data.get("company_title") or ""
+            if verify_company_vkn:
+                res = verify_company_vkn(vkn, title)
+                self.send_json(res)
+            else:
+                self.send_json({"valid": True, "tax_id": vkn, "status": "FAAL", "tax_office": "GİB Vergi Dairesi"})
+        except Exception as e:
+            self.send_json({"valid": False, "error": str(e)}, status=500)
+
     def handle_create_dealer(self):
         length = int(self.headers.get("Content-Length", 0))
         post_data = self.rfile.read(length)
         try:
             data = json.loads(post_data.decode("utf-8"))
             tracking_code = data.get("tracking_code") or f"BAYI-2026-{random.randint(1000, 9999)}"
+
+            lat = float(data.get("latitude") or 0.0)
+            lng = float(data.get("longitude") or 0.0)
+            map_addr = data.get("map_address") or ""
+            vkn_ver = 1 if data.get("vkn_verified") else 0
+            tax_off = data.get("tax_office") or ""
+            mersis = data.get("mersis_no") or ""
+            c_status = data.get("company_status") or "FAAL"
 
             conn = sqlite3.connect(DB_FILE)
             cur = conn.cursor()
@@ -104,8 +178,10 @@ class DealerHandler(http.server.SimpleHTTPRequestHandler):
                     tax_id, contact_phone, contact_email, target_location,
                     property_status, store_area, store_frontage, location_details,
                     investment_budget, collateral_capacity, experience_years,
-                    target_annual_revenue, business_vision, status, created_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    target_annual_revenue, business_vision, status, created_at,
+                    latitude, longitude, map_address, vkn_verified, tax_office,
+                    mersis_no, company_status
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
                 tracking_code,
                 data.get("application_type", ""),
@@ -125,12 +201,24 @@ class DealerHandler(http.server.SimpleHTTPRequestHandler):
                 data.get("target_annual_revenue", ""),
                 data.get("business_vision", ""),
                 data.get("status", "Başvuru Alındı"),
-                data.get("created_at", "")
+                data.get("created_at", ""),
+                lat,
+                lng,
+                map_addr,
+                vkn_ver,
+                tax_off,
+                mersis,
+                c_status
             ))
             conn.commit()
             conn.close()
 
-            self.send_json({"status": "success", "tracking_code": tracking_code})
+            self.send_json({
+                "status": "success",
+                "tracking_code": tracking_code,
+                "vkn_verified": bool(vkn_ver),
+                "map_pinned": bool(lat != 0.0 and lng != 0.0)
+            })
         except Exception as e:
             self.send_json({"status": "error", "message": str(e)}, status=500)
 

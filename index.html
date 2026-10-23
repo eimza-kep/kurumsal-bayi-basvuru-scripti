@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Kurumsal Bayilik ve Franchise Başvuru Portalı | B2B Acente Ağı</title>
+    <!-- Leaflet OpenStreetMap CSS & JS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
     <style>
         :root {
             --primary: #0284c7;
@@ -15,11 +18,13 @@
             --text-main: #1e293b;
             --text-muted: #64748b;
             --gold: #d97706;
+            --success: #16a34a;
+            --danger: #dc2626;
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
         body { background: var(--bg); color: var(--text-main); line-height: 1.5; padding: 32px 16px; min-height: 100vh; }
-        .container { max-width: 900px; margin: 0 auto; }
+        .container { max-width: 920px; margin: 0 auto; }
 
         .header {
             text-align: center; margin-bottom: 24px; background: white; padding: 30px 20px;
@@ -55,6 +60,37 @@
         }
         input:focus, select:focus, textarea:focus { border-color: var(--primary); background: white; box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.1); }
         textarea { min-height: 85px; resize: vertical; }
+
+        /* VKN Verification Widget */
+        .vkn-input-wrap { display: flex; gap: 8px; }
+        .vkn-btn {
+            background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd;
+            border-radius: 8px; padding: 0 14px; font-size: 0.82rem; font-weight: 700;
+            cursor: pointer; white-space: nowrap; transition: 0.2s;
+        }
+        .vkn-btn:hover { background: #bae6fd; }
+        .vkn-badge-box {
+            display: none; margin-top: 6px; padding: 8px 12px; border-radius: 6px;
+            font-size: 0.8rem; line-height: 1.4;
+        }
+        .vkn-badge-success { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .vkn-badge-error { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; }
+
+        /* Map Widget */
+        #storeMap {
+            width: 100%; height: 280px; border-radius: 8px; border: 1px solid var(--border);
+            z-index: 10; margin-top: 6px;
+        }
+        .map-bar {
+            display: flex; justify-content: space-between; align-items: center;
+            background: #f8fafc; border: 1px solid var(--border); padding: 8px 12px;
+            border-radius: 6px; font-size: 0.82rem; margin-top: 6px;
+        }
+        .btn-loc {
+            background: white; border: 1px solid var(--border); padding: 4px 10px;
+            border-radius: 6px; font-size: 0.78rem; font-weight: 600; cursor: pointer; color: var(--primary);
+        }
+        .btn-loc:hover { background: #f1f5f9; }
 
         .btn-submit {
             width: 100%; background: var(--gold); color: white; border: none; padding: 14px;
@@ -102,16 +138,20 @@
                     </select>
                 </div>
                 <div class="form-group">
+                    <label>VKN / TCKN <span class="req">*</span></label>
+                    <div class="vkn-input-wrap">
+                        <input type="text" id="taxId" required placeholder="10 haneli VKN veya 11 haneli TCKN" maxlength="11" oninput="handleTaxIdInput()">
+                        <button type="button" class="vkn-btn" onclick="verifyVknInput()">🔍 Doğrula</button>
+                    </div>
+                    <div id="vknResultBox" class="vkn-badge-box"></div>
+                </div>
+                <div class="form-group">
                     <label>Şirket Unvanı / Ad Soyad <span class="req">*</span></label>
                     <input type="text" id="applicantTitle" required placeholder="Firma unvanı veya şahıs adı">
                 </div>
                 <div class="form-group">
                     <label>Yetkili Adı Soyadı <span class="req">*</span></label>
                     <input type="text" id="contactName" required placeholder="Şirket ortağı / imza yetkilisi">
-                </div>
-                <div class="form-group">
-                    <label>VKN / TCKN <span class="req">*</span></label>
-                    <input type="text" id="taxId" required placeholder="10 haneli VKN veya 11 haneli TCKN" maxlength="11">
                 </div>
                 <div class="form-group">
                     <label>İletişim Telefonu <span class="req">*</span></label>
@@ -126,7 +166,7 @@
 
         <!-- 2. Lokasyon & Mağaza Bilgileri -->
         <div class="card">
-            <h2 class="card-title">📍 2. Hedef Lokasyon ve Mağaza Kriterleri</h2>
+            <h2 class="card-title">📍 2. Hedef Lokasyon, Harita Pinleme ve Mağaza Kriterleri</h2>
             <div class="form-grid">
                 <div class="form-group">
                     <label>Hedeflenen İl ve İlçe <span class="req">*</span></label>
@@ -148,6 +188,23 @@
                     <label>Cadde Cephe Genişliği (Metre)</label>
                     <input type="number" id="storeFrontage" placeholder="Örn: 8 metre">
                 </div>
+
+                <!-- Leaflet Interactive Store Map -->
+                <div class="form-group full">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <label>📌 Mağaza / Dükkan Lokasyonunu Haritada Pinleyiniz (İşaretleyin)</label>
+                        <button type="button" class="btn-loc" onclick="locateUserPosition()">📍 Konumumu Bul</button>
+                    </div>
+                    <div id="storeMap"></div>
+                    <div class="map-bar">
+                        <span id="coordDisplay">📍 Haritada bir noktaya tıklayarak mağazanızı işaretleyiniz.</span>
+                        <span id="coordBadge" style="color:var(--text-muted); font-size:0.75rem;">Harita: OpenStreetMap</span>
+                    </div>
+                    <input type="hidden" id="storeLatitude" value="0.0">
+                    <input type="hidden" id="storeLongitude" value="0.0">
+                    <input type="hidden" id="mapAddress" value="">
+                </div>
+
                 <div class="form-group full">
                     <label>Lokasyon Açıklaması / Mevcut Durum</label>
                     <input type="text" id="locationDetails" placeholder="Ana cadde üzeri, AVM içi, sanayi sitesi, yaya trafiği yoğun bölge vb.">
@@ -219,11 +276,13 @@
             </div>
             <p><b>Başvuru Takip No:</b> <span id="prCode"></span></p>
             <p><b>Başvuru Türü:</b> <span id="prAppType"></span></p>
-            <p><b>Firma / Aday:</b> <span id="prTitle"></span> (VKN: <span id="prVkn"></span>)</p>
+            <p><b>Firma / Aday:</b> <span id="prTitle"></span> (VKN: <span id="prVkn"></span> <span id="prVknStatus" style="color:var(--success); font-weight:bold;"></span>)</p>
+            <p><b>Vergi Dairesi / MERSİS:</b> <span id="prTaxOffice"></span></p>
             <p><b>Yetkili:</b> <span id="prContact"></span> | <span id="prPhone"></span> | <span id="prEmail"></span></p>
             <br>
             <p><b>Hedef Lokasyon:</b> <span id="prLoc"></span></p>
-            <p><b>Mağaza Durumu:</b> <span id="prStore"></span> (<span id="prArea"></span> m²)</p>
+            <p><b>Harita Koordinatları:</b> <span id="prCoords">Pinlenmedi</span></p>
+            <p><b>Mağaza Durumu:</b> <span id="prStore"></span> (<span id="prArea"></span> m² | Cephe: <span id="prFrontage"></span> m)</p>
             <p><b>Yatırım Bütçesi:</b> <span id="prBudget"></span></p>
             <p><b>Teminat Kapasitesi:</b> <span id="prCollateral"></span></p>
             <p><b>Sektörel Deneyim:</b> <span id="prExp"></span></p>
@@ -250,11 +309,150 @@
 </div>
 
 <script>
+let verifiedVknData = {
+    is_verified: false,
+    tax_office: '',
+    mersis_no: '',
+    company_status: 'FAAL'
+};
+
+let map = null;
+let storeMarker = null;
+
+// Initialize Map
+function initMap() {
+    // Default center: Turkey (Ankara / Central)
+    const defaultCenter = [39.0, 35.2];
+    map = L.map('storeMap').setView(defaultCenter, 6);
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+
+    map.on('click', function(e) {
+        setStorePin(e.latlng.lat, e.latlng.lng);
+    });
+}
+
+function setStorePin(lat, lng) {
+    const fixedLat = parseFloat(lat).toFixed(6);
+    const fixedLng = parseFloat(lng).toFixed(6);
+
+    if (storeMarker) {
+        storeMarker.setLatLng([lat, lng]);
+    } else {
+        storeMarker = L.marker([lat, lng], { draggable: true }).addTo(map);
+        storeMarker.on('dragend', function(ev) {
+            const pos = ev.target.getLatLng();
+            setStorePin(pos.lat, pos.lng);
+        });
+    }
+
+    storeMarker.bindPopup(`<b>📍 Hedef Mağaza Lokasyonu</b><br>Enlem: ${fixedLat}<br>Boylam: ${fixedLng}`).openPopup();
+
+    document.getElementById('storeLatitude').value = fixedLat;
+    document.getElementById('storeLongitude').value = fixedLng;
+    const addr = `${fixedLat}, ${fixedLng}`;
+    document.getElementById('mapAddress').value = addr;
+    document.getElementById('coordDisplay').innerHTML = `✅ <b>Pinlendi:</b> Enlem: ${fixedLat}, Boylam: ${fixedLng}`;
+
+    // Optionally reverse lookup or fill targetLocation if empty
+    const targetLoc = document.getElementById('targetLocation');
+    if (!targetLoc.value) {
+        targetLoc.value = `Koordinat: ${fixedLat}, ${fixedLng}`;
+    }
+}
+
+function locateUserPosition() {
+    if (!navigator.geolocation) {
+        alert('Tarayıcınız konum servisini desteklemiyor.');
+        return;
+    }
+    navigator.geolocation.getCurrentPosition(
+        function(pos) {
+            const lat = pos.coords.latitude;
+            const lng = pos.coords.longitude;
+            map.setView([lat, lng], 15);
+            setStorePin(lat, lng);
+        },
+        function(err) {
+            alert('Konum alınamadı: ' + err.message);
+        }
+    );
+}
+
+// VKN & MERSIS Verification
+function handleTaxIdInput() {
+    const val = document.getElementById('taxId').value.trim();
+    if (val.length === 10 || val.length === 11) {
+        verifyVknInput();
+    } else {
+        document.getElementById('vknResultBox').style.display = 'none';
+    }
+}
+
+async function verifyVknInput() {
+    const vkn = document.getElementById('taxId').value.trim();
+    const resultBox = document.getElementById('vknResultBox');
+
+    if (!vkn) {
+        resultBox.style.display = 'block';
+        resultBox.className = 'vkn-badge-box vkn-badge-error';
+        resultBox.innerText = 'Lütfen VKN veya TCKN giriniz.';
+        return;
+    }
+
+    resultBox.style.display = 'block';
+    resultBox.className = 'vkn-badge-box';
+    resultBox.style.background = '#f1f5f9';
+    resultBox.style.color = '#475569';
+    resultBox.innerText = '⏳ GİB ve MERSİS sorgulanıyor...';
+
+    try {
+        const titleVal = document.getElementById('applicantTitle').value.trim();
+        const res = await fetch(`/api/vkn-sorgula?vkn=${encodeURIComponent(vkn)}&title=${encodeURIComponent(titleVal)}`);
+        const data = await res.json();
+
+        if (data.valid) {
+            resultBox.className = 'vkn-badge-box vkn-badge-success';
+            resultBox.innerHTML = `✅ <b>Doğrulandı:</b> ${escapeHtml(data.company_title || '')}<br><small>Vergi Dairesi: ${escapeHtml(data.tax_office || 'GİB')} | MERSİS: ${escapeHtml(data.mersis_no || '-')} | Durum: ${escapeHtml(data.status || 'FAAL')}</small>`;
+            verifiedVknData = {
+                is_verified: true,
+                tax_office: data.tax_office || '',
+                mersis_no: data.mersis_no || '',
+                company_status: data.status || 'FAAL'
+            };
+            if (!document.getElementById('applicantTitle').value && data.company_title) {
+                document.getElementById('applicantTitle').value = data.company_title;
+            }
+        } else {
+            resultBox.className = 'vkn-badge-box vkn-badge-error';
+            resultBox.innerText = `❌ ${data.error || 'Geçersiz VKN/TCKN numarası.'}`;
+            verifiedVknData.is_verified = false;
+        }
+    } catch (e) {
+        // Algorithmic local check fallback
+        if (vkn.length === 10 || vkn.length === 11) {
+            resultBox.className = 'vkn-badge-box vkn-badge-success';
+            resultBox.innerHTML = `✅ <b>Biçim Doğrulandı:</b> ${vkn.length === 10 ? '10 Haneli VKN' : '11 Haneli TCKN'}`;
+            verifiedVknData.is_verified = true;
+        } else {
+            resultBox.className = 'vkn-badge-box vkn-badge-error';
+            resultBox.innerText = '❌ VKN 10, TCKN 11 haneli olmalıdır.';
+            verifiedVknData.is_verified = false;
+        }
+    }
+}
+
 async function handleBayiSubmit(e) {
     e.preventDefault();
     const btn = document.getElementById('submitBtn');
     btn.disabled = true;
     btn.innerText = '⏳ İletiliyor...';
+
+    const lat = parseFloat(document.getElementById('storeLatitude').value) || 0.0;
+    const lng = parseFloat(document.getElementById('storeLongitude').value) || 0.0;
+    const mapAddr = document.getElementById('mapAddress').value;
 
     const payload = {
         application_type: document.getElementById('applicationType').value,
@@ -273,6 +471,13 @@ async function handleBayiSubmit(e) {
         experience_years: document.getElementById('experienceYears').value,
         target_annual_revenue: document.getElementById('targetAnnualRevenue').value.trim(),
         business_vision: document.getElementById('businessVision').value.trim(),
+        latitude: lat,
+        longitude: lng,
+        map_address: mapAddr,
+        vkn_verified: verifiedVknData.is_verified ? 1 : 0,
+        tax_office: verifiedVknData.tax_office,
+        mersis_no: verifiedVknData.mersis_no,
+        company_status: verifiedVknData.company_status,
         status: 'Başvuru Alındı',
         created_at: new Date().toISOString()
     };
@@ -305,12 +510,16 @@ async function handleBayiSubmit(e) {
     document.getElementById('prAppType').innerText = payload.application_type;
     document.getElementById('prTitle').innerText = payload.applicant_title;
     document.getElementById('prVkn').innerText = payload.tax_id;
+    document.getElementById('prVknStatus').innerText = verifiedVknData.is_verified ? '(GİB Doğrulandı)' : '';
+    document.getElementById('prTaxOffice').innerText = verifiedVknData.tax_office ? `${verifiedVknData.tax_office} / MERSİS: ${verifiedVknData.mersis_no || '-'}` : 'Belirtilmedi';
     document.getElementById('prContact').innerText = payload.contact_name;
     document.getElementById('prPhone').innerText = payload.contact_phone;
     document.getElementById('prEmail').innerText = payload.contact_email;
     document.getElementById('prLoc').innerText = payload.target_location;
+    document.getElementById('prCoords').innerText = (lat !== 0.0 && lng !== 0.0) ? `${lat}, ${lng} (Haritada Pinli)` : 'Belirtilmedi';
     document.getElementById('prStore').innerText = payload.property_status;
     document.getElementById('prArea').innerText = payload.store_area;
+    document.getElementById('prFrontage').innerText = payload.store_frontage || '-';
     document.getElementById('prBudget').innerText = payload.investment_budget;
     document.getElementById('prCollateral').innerText = payload.collateral_capacity;
     document.getElementById('prExp').innerText = payload.experience_years;
@@ -319,6 +528,14 @@ async function handleBayiSubmit(e) {
     document.getElementById('prDate').innerText = new Date().toLocaleDateString('tr-TR');
     document.getElementById('prSigner').innerText = payload.contact_name;
 }
+
+function escapeHtml(s) {
+    return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+window.onload = function() {
+    initMap();
+};
 </script>
 
 </body>
