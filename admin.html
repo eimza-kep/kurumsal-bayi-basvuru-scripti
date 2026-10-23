@@ -21,13 +21,15 @@
         }
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
         body { background: var(--bg); color: var(--text-main); line-height: 1.5; padding: 24px; }
-        .container { max-width: 1240px; margin: 0 auto; }
+        .container { max-width: 1260px; margin: 0 auto; }
         .navbar { display: flex; justify-content: space-between; align-items: center; background: white; padding: 18px 24px; border-radius: 12px; border: 1px solid var(--border); margin-bottom: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.03); }
         .navbar h1 { font-size: 1.3rem; font-weight: 800; color: #0f172a; display: flex; align-items: center; gap: 8px; }
-        .nav-actions { display: flex; gap: 10px; }
+        .nav-actions { display: flex; gap: 10px; flex-wrap: wrap; }
         .btn { padding: 8px 16px; border-radius: 6px; font-size: 0.85rem; font-weight: 600; cursor: pointer; border: 1px solid var(--border); background: white; color: var(--text-main); transition: 0.2s; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
         .btn-primary { background: var(--gold); color: white; border-color: var(--gold); }
         .btn-primary:hover { background: #b45309; }
+        .btn-blue { background: var(--primary); color: white; border-color: var(--primary); }
+        .btn-blue:hover { background: var(--primary-hover); }
         .btn-sm { padding: 4px 8px; font-size: 0.8rem; }
 
         .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px; }
@@ -55,7 +57,7 @@
         .badge-pin { background: #eff6ff; color: #1d4ed8; font-size: 0.7rem; font-weight: 700; padding: 2px 6px; border-radius: 4px; border: 1px solid #bfdbfe; display: inline-flex; align-items: center; gap: 3px; }
 
         .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.55); align-items: center; justify-content: center; padding: 20px; z-index: 100; backdrop-filter: blur(2px); }
-        .modal-card { background: white; width: 100%; max-width: 750px; border-radius: 14px; padding: 26px; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.2); }
+        .modal-card { background: white; width: 100%; max-width: 800px; border-radius: 14px; padding: 26px; max-height: 92vh; overflow-y: auto; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.2); }
         .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 14px; margin-bottom: 16px; }
         .modal-header h3 { font-size: 1.15rem; font-weight: 800; color: #0f172a; }
         .detail-row { display: flex; margin-bottom: 10px; font-size: 0.88rem; }
@@ -72,7 +74,8 @@
         <h1>🤝 Bayi & Franchise Ağı Yönetim Paneli</h1>
         <div class="nav-actions">
             <a href="/" class="btn" target="_blank">🌐 Başvuru Portalı</a>
-            <button class="btn btn-primary" onclick="exportCSV()">📥 CSV Dışa Aktar</button>
+            <a href="/api/bayi-raporu-html" class="btn btn-blue" target="_blank">📊 İcra Kurulu Ağı Raporu</a>
+            <a href="/api/export-csv" class="btn btn-primary" download="bayi_basvurulari.csv">📥 CSV Dışa Aktar</a>
             <button class="btn" onclick="fetchData()">🔄 Yenile</button>
         </div>
     </div>
@@ -126,7 +129,7 @@
                     <th>Tür</th>
                     <th>Hedef Lokasyon</th>
                     <th>Alan</th>
-                    <th>Yatırım Bütçesi</th>
+                    <th>Bütçe & Skor</th>
                     <th>Durum</th>
                     <th>İşlem</th>
                 </tr>
@@ -159,7 +162,8 @@
                 </select>
                 <button class="btn btn-primary btn-sm" onclick="updateCurrentStatus()">Güncelle</button>
             </div>
-            <div style="display: flex; gap: 8px;">
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                <a id="btnOpenProtocol" class="btn btn-sm btn-blue" href="#" target="_blank">📄 A4 Ön Protokolü Aç</a>
                 <button class="btn btn-sm" id="btnGoogleMaps" onclick="openGoogleMaps()" style="display:none;">🗺️ Google Haritalar</button>
                 <button class="btn btn-sm" onclick="window.print()">🖨️ Yazdır</button>
             </div>
@@ -231,6 +235,11 @@ function render() {
         const hasPin = (d.latitude && d.longitude && d.latitude !== 0);
         const pinBadge = hasPin ? '<br><span class="badge-pin">📍 Haritada Pinli</span>' : '';
 
+        const scoreBadge = d.score !== undefined ? `
+            <div style="margin-top: 4px;">
+                <span class="badge" style="background:#eff6ff; color:#0369a1; border: 1px solid #bfdbfe; font-size: 0.72rem;">⭐ ${d.score}/100 (${d.tier})</span>
+            </div>` : '';
+
         return `
             <tr>
                 <td><b>${escapeHtml(d.tracking_code || 'BAYI-'+i)}</b></td>
@@ -239,10 +248,16 @@ function render() {
                 <td><small>${escapeHtml(d.application_type || '')}</small></td>
                 <td><b>${escapeHtml(d.target_location || '')}</b>${pinBadge}</td>
                 <td>${d.store_area || 0} m²</td>
-                <td><small>${escapeHtml(d.investment_budget || '')}</small></td>
+                <td>
+                    <small style="color:var(--text-main); font-weight:600;">${escapeHtml(d.investment_budget || '')}</small>
+                    ${scoreBadge}
+                </td>
                 <td><span class="badge ${badgeClass}">${st}</span></td>
                 <td>
-                    <button class="btn btn-sm" onclick="viewDetail(${i})">Detay</button>
+                    <div style="display:flex; gap: 4px;">
+                        <button class="btn btn-sm" onclick="viewDetail(${i})">Detay</button>
+                        <a href="/api/bayi-protokol-html?code=${encodeURIComponent(d.tracking_code || '')}" target="_blank" class="btn btn-sm" style="color:var(--primary);" title="Resmi A4 Ön Protokol">📄</a>
+                    </div>
                 </td>
             </tr>
         `;
@@ -258,6 +273,11 @@ function viewDetail(idx) {
     document.getElementById('modalTitle').innerText = `${activeItem.tracking_code} - ${activeItem.applicant_title}`;
     document.getElementById('changeStatusSelect').value = activeItem.status || 'Başvuru Alındı';
 
+    const protoLink = document.getElementById('btnOpenProtocol');
+    if (protoLink) {
+        protoLink.href = `/api/bayi-protokol-html?code=${encodeURIComponent(activeItem.tracking_code || '')}`;
+    }
+
     const hasPin = (activeItem.latitude && activeItem.longitude && activeItem.latitude !== 0);
     const googleBtn = document.getElementById('btnGoogleMaps');
     if (hasPin) {
@@ -272,6 +292,16 @@ function viewDetail(idx) {
 
     const mersisInfo = activeItem.mersis_no ? ` | MERSİS: <b>${escapeHtml(activeItem.mersis_no)}</b>` : '';
 
+    const scoreCard = activeItem.score !== undefined ? `
+        <div style="margin-top: 14px; background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 8px; padding: 12px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                <span style="font-weight: 700; color: #0369a1; font-size: 0.9rem;">⭐ Bayi Yeterlilik Puanı: ${activeItem.score} / 100</span>
+                <span class="badge" style="background: #0284c7; color: white;">Kademe: ${escapeHtml(activeItem.tier || 'A')}</span>
+            </div>
+            <div style="font-size: 0.82rem; color: #0c4a6e;">${escapeHtml(activeItem.tier_title || '')}</div>
+        </div>
+    ` : '';
+
     const b = document.getElementById('modalBody');
     b.innerHTML = `
         <div class="detail-row"><div class="detail-lbl">Firma / Başvuru Sahibi:</div><div class="detail-val"><b>${escapeHtml(activeItem.applicant_title || '')}</b> (VKN: ${escapeHtml(activeItem.tax_id || '')})</div></div>
@@ -285,6 +315,8 @@ function viewDetail(idx) {
         <div class="detail-row"><div class="detail-lbl">Teminat Kapasitesi:</div><div class="detail-val">${escapeHtml(activeItem.collateral_capacity || '')}</div></div>
         <div class="detail-row"><div class="detail-lbl">Sektörel Deneyim:</div><div class="detail-val">${escapeHtml(activeItem.experience_years || '')} | Hedef Ciro: ${escapeHtml(activeItem.target_annual_revenue || 'Belirtilmedi')}</div></div>
         
+        ${scoreCard}
+
         ${hasPin ? `
         <div style="margin-top: 12px; border: 1px solid var(--border); border-radius: 8px; padding: 12px; background: white;">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
@@ -355,20 +387,6 @@ async function updateCurrentStatus() {
     localStorage.setItem('bayi_basvurular', JSON.stringify(allData));
     closeModal();
     render();
-}
-
-function exportCSV() {
-    if (!allData || allData.length === 0) { alert('Dışa aktarılacak bayi verisi bulunamadı.'); return; }
-    let csv = '\uFEFFDosya No,Başvuru Türü,Firma Unvanı,VKN,VKN Doğrulandı,Vergi Dairesi,MERSİS No,Yetkili,Telefon,E-posta,Lokasyon,Enlem,Boylam,Mağaza Durumu,Alan m2,Yatırım Bütçesi,Teminat,Deneyim,Durum,Tarih\n';
-    allData.forEach(d => {
-        csv += `"${d.tracking_code || ''}","${d.application_type || ''}","${d.applicant_title || ''}","${d.tax_id || ''}","${d.vkn_verified ? 'EVET' : 'HAYIR'}","${d.tax_office || ''}","${d.mersis_no || ''}","${d.contact_name || ''}","${d.contact_phone || ''}","${d.contact_email || ''}","${d.target_location || ''}","${d.latitude || ''}","${d.longitude || ''}","${d.property_status || ''}","${d.store_area || 0}","${d.investment_budget || ''}","${d.collateral_capacity || ''}","${d.experience_years || ''}","${d.status || 'Başvuru Alındı'}","${d.created_at || ''}"\n`;
-    });
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `bayi_basvurulari_${new Date().toISOString().slice(0,10)}.csv`;
-    a.click();
 }
 
 function escapeHtml(s) {

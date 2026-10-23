@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import http.server
 import socketserver
 import json
@@ -16,6 +17,21 @@ try:
     from bayi_vkn_validator import verify_company_vkn, validate_vkn_checksum, validate_tckn_checksum
 except ImportError:
     verify_company_vkn = None
+
+try:
+    from bayi_scoring_protocol import (
+        calculate_dealer_score,
+        generate_dealership_protocol_html,
+        calculate_network_analytics,
+        generate_dealer_network_report_html,
+        generate_dealer_csv_export
+    )
+except ImportError:
+    calculate_dealer_score = None
+    generate_dealership_protocol_html = None
+    calculate_network_analytics = None
+    generate_dealer_network_report_html = None
+    generate_dealer_csv_export = None
 
 PORT = int(os.environ.get("PORT", 8093))
 DB_FILE = os.environ.get("DATABASE_PATH", os.path.join(os.path.dirname(os.path.abspath(__file__)), "bayi_basvurular.db"))
@@ -88,6 +104,16 @@ class DealerHandler(http.server.SimpleHTTPRequestHandler):
             self.handle_get_dealers()
         elif path == "/api/vkn-sorgula":
             self.handle_vkn_lookup(parsed)
+        elif path == "/api/bayi-protokol-html":
+            self.handle_protocol_html(parsed)
+        elif path == "/api/bayi-skorla":
+            self.handle_score_get(parsed)
+        elif path == "/api/bayi-raporu-json":
+            self.handle_network_report_json()
+        elif path == "/api/bayi-raporu-html":
+            self.handle_network_report_html()
+        elif path == "/api/export-csv":
+            self.handle_export_csv()
         else:
             super().do_GET()
 
@@ -101,6 +127,8 @@ class DealerHandler(http.server.SimpleHTTPRequestHandler):
             self.handle_update_status()
         elif path == "/api/vkn-dogrula":
             self.handle_vkn_post_validate()
+        elif path == "/api/bayi-skorla":
+            self.handle_score_post()
         else:
             self.send_error(404, "Endpoint not found")
 
@@ -121,6 +149,25 @@ class DealerHandler(http.server.SimpleHTTPRequestHandler):
         body = json.dumps(data, ensure_ascii=False).encode("utf-8")
         self.send_response(status)
         self.send_header("Content-Type", "application/json; charset=utf-8")
+        self.send_header("Content-Length", str(len(body)))
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.end_headers()
+        self.wfile.write(body)
+
+    def send_html(self, content_str, status=200):
+        body = content_str.encode("utf-8")
+        self.send_response(status)
+        self.send_header("Content-Type", "text/html; charset=utf-8")
+        self.send_header("Content-Length", str(len(body)))
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.end_headers()
+        self.wfile.write(body)
+
+    def send_csv(self, csv_str, filename="bayi_basvurulari.csv", status=200):
+        body = csv_str.encode("utf-8")
+        self.send_response(status)
+        self.send_header("Content-Type", "text/csv; charset=utf-8")
+        self.send_header("Content-Disposition", f'attachment; filename="{filename}"')
         self.send_header("Content-Length", str(len(body)))
         self.send_header("Access-Control-Allow-Origin", "*")
         self.end_headers()
@@ -230,6 +277,15 @@ class DealerHandler(http.server.SimpleHTTPRequestHandler):
             cur.execute("SELECT * FROM dealer_applications ORDER BY id DESC")
             rows = [dict(r) for r in cur.fetchall()]
             conn.close()
+
+            # Attach scoring summary if calculate_dealer_score is available
+            if calculate_dealer_score:
+                for r in rows:
+                    sc = calculate_dealer_score(r)
+                    r["score"] = sc["total_score"]
+                    r["tier"] = sc["tier"]
+                    r["tier_title"] = sc["tier_title"]
+
             self.send_json(rows)
         except Exception as e:
             self.send_json({"status": "error", "message": str(e)}, status=500)
@@ -251,6 +307,136 @@ class DealerHandler(http.server.SimpleHTTPRequestHandler):
             self.send_json({"status": "success", "updated": tracking_code})
         except Exception as e:
             self.send_json({"status": "error", "message": str(e)}, status=500)
+
+    def handle_protocol_html(self, parsed):
+        if not generate_dealership_protocol_html:
+            self.send_html("<h3>Protokol motoru yüklenemedi.</h3>", status=500)
+            return
+
+        qs = parse_qs(parsed.query)
+        code = qs.get("code", [""])[0].strip()
+        app_id = qs.get("id", [""])[0].strip()
+
+        conn = sqlite3.connect(DB_FILE)
+        conn.row_factory = sqlite3.Row
+        cur = conn.cursor()
+        if code:
+            cur.execute("SELECT * FROM dealer_applications WHERE tracking_code = ?", (code,))
+        elif app_id:
+            cur.execute("SELECT * FROM dealer_applications WHERE id = ?", (app_id,))
+        else:
+            cur.execute("SELECT * FROM dealer_applications ORDER BY id DESC LIMIT 1")
+        row = cur.fetchone()
+        conn.close()
+
+        if not row:
+            self.send_html("<h3>Kayıt bulunamadı.</h3>", status=404)
+            return
+
+        app_data = dict(row)
+        html_content = generate_dealership_protocol_html(app_data)
+        self.send_html(html_content)
+
+    def handle_score_get(self, parsed):
+        if not calculate_dealer_score:
+            self.send_json({"error": "Skorlama motoru yüklenemedi"}, status=500)
+            return
+
+        qs = parse_qs(parsed.query)
+        code = qs.get("code", [""])[0].strip()
+        app_id = qs.get("id", [""])[0].strip()
+
+        conn = sqlite3.connect(DB_FILE)
+        conn.row_factory = sqlite3.Row
+        cur = conn.cursor()
+        if code:
+            cur.execute("SELECT * FROM dealer_applications WHERE tracking_code = ?", (code,))
+        elif app_id:
+            cur.execute("SELECT * FROM dealer_applications WHERE id = ?", (app_id,))
+        else:
+            cur.execute("SELECT * FROM dealer_applications ORDER BY id DESC LIMIT 1")
+        row = cur.fetchone()
+        conn.close()
+
+        if not row:
+            self.send_json({"error": "Kayıt bulunamadı"}, status=404)
+            return
+
+        score_res = calculate_dealer_score(dict(row))
+        self.send_json({
+            "tracking_code": row["tracking_code"],
+            "applicant_title": row["applicant_title"],
+            "scoring": score_res
+        })
+
+    def handle_score_post(self):
+        if not calculate_dealer_score:
+            self.send_json({"error": "Skorlama motoru yüklenemedi"}, status=500)
+            return
+
+        length = int(self.headers.get("Content-Length", 0))
+        post_data = self.rfile.read(length)
+        try:
+            data = json.loads(post_data.decode("utf-8"))
+            score_res = calculate_dealer_score(data)
+            self.send_json(score_res)
+        except Exception as e:
+            self.send_json({"error": str(e)}, status=500)
+
+    def handle_network_report_json(self):
+        if not calculate_network_analytics:
+            self.send_json({"error": "Analitik motoru yüklenemedi"}, status=500)
+            return
+
+        try:
+            conn = sqlite3.connect(DB_FILE)
+            conn.row_factory = sqlite3.Row
+            cur = conn.cursor()
+            cur.execute("SELECT * FROM dealer_applications ORDER BY id DESC")
+            rows = [dict(r) for r in cur.fetchall()]
+            conn.close()
+
+            analytics = calculate_network_analytics(rows)
+            self.send_json(analytics)
+        except Exception as e:
+            self.send_json({"error": str(e)}, status=500)
+
+    def handle_network_report_html(self):
+        if not generate_dealer_network_report_html:
+            self.send_html("<h3>Rapor motoru yüklenemedi.</h3>", status=500)
+            return
+
+        try:
+            conn = sqlite3.connect(DB_FILE)
+            conn.row_factory = sqlite3.Row
+            cur = conn.cursor()
+            cur.execute("SELECT * FROM dealer_applications ORDER BY id DESC")
+            rows = [dict(r) for r in cur.fetchall()]
+            conn.close()
+
+            analytics = calculate_network_analytics(rows)
+            html_content = generate_dealer_network_report_html(analytics)
+            self.send_html(html_content)
+        except Exception as e:
+            self.send_html(f"<h3>Rapor üretilirken hata oluştu: {str(e)}</h3>", status=500)
+
+    def handle_export_csv(self):
+        if not generate_dealer_csv_export:
+            self.send_json({"error": "CSV motoru yüklenemedi"}, status=500)
+            return
+
+        try:
+            conn = sqlite3.connect(DB_FILE)
+            conn.row_factory = sqlite3.Row
+            cur = conn.cursor()
+            cur.execute("SELECT * FROM dealer_applications ORDER BY id DESC")
+            rows = [dict(r) for r in cur.fetchall()]
+            conn.close()
+
+            csv_content = generate_dealer_csv_export(rows)
+            self.send_csv(csv_content, filename="bayi_basvurulari.csv")
+        except Exception as e:
+            self.send_json({"error": str(e)}, status=500)
 
 if __name__ == "__main__":
     init_db()

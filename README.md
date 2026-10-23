@@ -7,7 +7,7 @@
 [![PHP: 7.4+](https://img.shields.io/badge/PHP-7.4%2B-purple.svg)](https://php.net)
 [![Docker Support](https://img.shields.io/badge/Docker-Ready-2496ED.svg)](Dockerfile)
 
-Üretici markalar, zincir mağazalar, franchise sistemleri, distribütörlük ağları ve B2B toptan satış firmaları için; harici kütüphane bağımlılığı olmaksızın (zero-dependency) çalışan, **Leaflet / OpenStreetMap İnteraktif Mağaza Pinleme**, **GİB Vergi Levhası ve MERSİS VKN Doğrulama Motoru** barındıran açık kaynaklı kurumsal bayi geliştirme ve acente yönetim yazılımı.
+Üretici markalar, zincir mağazalar, franchise sistemleri, distribütörlük ağları ve B2B toptan satış firmaları için; harici kütüphane bağımlılığı olmaksızın (zero-dependency) çalışan, **Leaflet / OpenStreetMap İnteraktif Mağaza Pinleme**, **GİB Vergi Levhası ve MERSİS VKN Doğrulama Motoru**, **A4 Resmi Bayilik Ön Protokolü**, **Aday Puanlama/Skorlama Motoru** ve **İcra Kurulu Bayilik Ağı Analitik Raporu** barındıran açık kaynaklı kurumsal bayi geliştirme ve acente yönetim yazılımı.
 
 ---
 
@@ -21,15 +21,18 @@
   - Aday bayi, açmayı planladığı mağaza/şube lokasyonunu haritada tıklayarak veya sürükleyerek işaretler.
   - Enlem (`latitude`), boylam (`longitude`) ve harita koordinatları otomatik kaydedilir.
   - Tek tıkla "Konumumu Bul" (HTML5 Geolocation) desteği.
-- **💼 Finansal Kapasite ve Teminat Analizi:**
-  - Yatırım bütçesi aralığı, banka teminat mektubu kapasitesi (DBS, nakit, gayrimenkul ipoteği), sektörel tecrübe yılı ve hedeflenen ilk yıl cirosu.
-- **📄 Resmi Bayi Başvuru Formu Çıktısı:**
-  - Takip numaralı (`BAYI-2026-XXXX`), koordinat dökümlü ve imza bloklu yazdırılabilir veya PDF olarak saklanabilir kurumsal başvuru özeti üretir.
+- **⭐ Bayi Skorlama ve Aday Yeterlilik Motoru (`bayi_scoring_protocol.py`):**
+  - Sermaye ve Bütçe Yeterliliği (%35), Mağaza Alanı ve Vitrin Cephesi (%25), Sektörel Deneyim (%20), Teminat Kapasitesi ve VKN Doğrulanmışlık (%20) parametreleriyle 100 üzerinden ağırlıklı yeterlilik puanı hesaplama.
+  - **A+ / A / B / C / D Segmentasyonu:** Adayın münhasır bayilik, standart franchise veya şartlı onay durumunu anında sınıflandırma.
+- **📄 A4 Resmi Bayilik & Franchise Ön Protokolü ve Uygunluk Belgesi:**
+  - 6102 sayılı TTK ve 6769 sayılı Sınai Mülkiyet Kanunu mevzuatına uygun tanzim edilen kurumsal antetli, bölge koruması (münhasırlık), ciro primi, teminat ve e-imza/kaşe bloklu resmi A4 belge motoru (`/api/bayi-protokol-html`).
+- **📊 İcra Kurulu Bayilik Ağı & Analitik Raporu:**
+  - Kümülatif yatırım hacmi, ortalama mağaza metrekareleri, il/bölge dağılımları ve dönüşüm oranlarını görselleştiren A4 formatında yönetim kurulu raporu (`/api/bayi-raporu-html` & `/api/bayi-raporu-json`).
 - **🤝 Bayi Ağı Yönetim Paneli (`admin.html`):**
   - **🗺️ Harita Önizleme & Google Maps Entegrasyonu:** İnceleme detayında pinlenen mağaza konumunu Leaflet haritası üzerinde gösterir ve tek tıkla `Google Haritalar'da Aç` köprüsü sunar.
-  - **✅ GİB/MERSİS Doğrulama Rozetleri:** Vergi dairesi onaylı şirketlerin tabloda ve detay modalında özel rozetlerle listelenmesi.
+  - **✅ GİB/MERSİS ve Skor Rozetleri:** Vergi dairesi onaylı şirketlerin ve yeterlilik puanlarının tabloda ve detay modalında özel rozetlerle listelenmesi.
   - **6 Aşamalı Statü Yönetimi:** *Başvuru Alındı*, *Ön İncelemeden Geçti*, *Lokasyon & Fizibilite İncelemesinde*, *Sözleşme Aşaması*, *Onaylandı (Bayilik Verildi)*, *Reddedildi*.
-  - **Excel / CSV Dışa Aktarımı:** UTF-8 BOM destekli, Türkçe karakter sorunu yaşatmayan tam kapsamlı koordinat ve VKN detaylı veri dökümü.
+  - **Excel / CSV Dışa Aktarımı:** UTF-8 BOM destekli, Türkçe karakter sorunu yaşatmayan tam kapsamlı koordinat, skor ve VKN detaylı veri dökümü (`/api/export-csv`).
 - **Sıfır Bağımlılık (Zero-Dependency) Çift Motorlu Mimari:**
   - **Python Motoru:** Dahili SQLite veritabanı ile tek tıkla lokalde veya sunucuda çalışır (`server.py`).
   - **PHP Motoru:** Paylaşımlı hosting ve cPanel için hazır JSON REST backend (`api.php`).
@@ -49,6 +52,7 @@
 3. Tarayıcınızda otomatik olarak açılır:
    - Bayi Başvuru Formu: `http://localhost:8093`
    - Bayi Yönetim Paneli: `http://localhost:8093/admin`
+   - İcra Kurulu Raporu: `http://localhost:8093/api/bayi-raporu-html`
 
 ### Seçenek 2: Linux & macOS
 ```bash
@@ -78,8 +82,14 @@ Dosyaları sunucunuzdaki `/bayi/` veya `/franchise/` ana dizinine yükleyin. `ap
 | Metot | Uç Nokta (Endpoint) | Açıklama |
 | :--- | :--- | :--- |
 | `POST` | `/api/bayi-basvuru` | Yeni bayi başvurusu kaydeder (`latitude`, `longitude`, `vkn_verified` destekli). |
-| `GET` | `/api/bayiler` | Tüm bayi başvuru listesini JSON formatında döndürür. |
+| `GET` | `/api/bayiler` | Tüm bayi başvuru listesini yeterlilik skorları ve kademeleriyle döndürür. |
 | `POST` | `/api/durum-guncelle` | Başvuru sürecini günceller (`tracking_code`, `status`). |
+| `GET` | `/api/bayi-protokol-html?code=...` | Resmi TTK & 6769 SMK uyumlu A4 ön protokol belgesini HTML olarak döndürür. |
+| `GET` | `/api/bayi-skorla?code=...` | Belirtilen bayi başvurusunun puanlama ve kademe analizini JSON olarak döndürür. |
+| `POST` | `/api/bayi-skorla` | Gönderilen JSON başvuru parametrelerine göre anlık yeterlilik skorunu hesaplar. |
+| `GET` | `/api/bayi-raporu-html` | İcra Kurulu & Satış Direktörlüğü A4 Bayilik Ağı Yönetim Raporu'nu üretir. |
+| `GET` | `/api/bayi-raporu-json` | Bayi başvuru havuzu ve dağılım analitiklerini JSON olarak döndürür. |
+| `GET` | `/api/export-csv` | Excel uyumlu UTF-8 BOM CSV formatında tüm veriyi dışa aktarır. |
 | `GET` | `/api/vkn-sorgula?vkn=...` | VKN/TCKN kontrol hanesi, vergi dairesi ve MERSİS sicilini doğrular. |
 | `POST` | `/api/vkn-dogrula` | JSON gövdesi ile kurumsal VKN doğrulama servisini tetikler. |
 | `GET` | `/health` | Servis sağlık durumunu ve port bilgisini döndürür. |
@@ -91,7 +101,7 @@ Dosyaları sunucunuzdaki `/bayi/` veya `/franchise/` ana dizinine yükleyin. `ap
 ```
 kurumsal-bayi-basvuru-scripti/
 ├── index.html                    # Bayi başvuru formu, Leaflet harita pinleme ve başvuru çıktısı
-├── admin.html                    # Bayilik geliştirme ve inceleme takip paneli (Harita önizlemeli)
+├── admin.html                    # Bayilik geliştirme paneli (Harita, skorlama ve protokol bağlantılı)
 ├── server.py                     # Standalone Python SQLite HTTP sunucusu (Port 8093)
 ├── api.php                       # PHP tabanlı REST backend
 ├── Baslat.bat                    # Windows tek tıkla başlatıcı
@@ -99,7 +109,8 @@ kurumsal-bayi-basvuru-scripti/
 ├── Dockerfile                    # Docker konteyner konfigürasyonu
 ├── scripts/
 │   ├── bayi_vkn_validator.py     # GİB VKN, TCKN ve MERSİS doğrulama motoru
-│   └── test_bayi.py              # Otomatik birim test paketi
+│   ├── bayi_scoring_protocol.py  # A4 Ön protokol üretici, puanlama motoru ve ağ analitikleri
+│   └── test_bayi.py              # Otomatik birim test paketi (13/13 test)
 ├── .github/
 │   └── workflows/ci.yml          # GitHub Actions CI testi
 └── README.md                     # Kapsamlı dokümantasyon
@@ -109,7 +120,7 @@ kurumsal-bayi-basvuru-scripti/
 
 ## 🧪 Testleri Çalıştırma
 
-Tüm doğrulama motoru ve veri tabanı akışları birim testlerle korunmaktadır:
+Tüm doğrulama motoru, puanlama algoritmaları, protokol üretimi ve veri tabanı akışları birim testlerle korunmaktadır:
 
 ```bash
 python scripts/test_bayi.py
