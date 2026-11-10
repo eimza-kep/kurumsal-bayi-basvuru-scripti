@@ -1,3 +1,4 @@
+BAYI_TEMINAT_ORANLARI_2026 = {'bolge_bayi': 500000, 'ilce_bayi': 150000, 'satis_noktasi': 50000}
 # -*- coding: utf-8 -*-
 import http.server
 import socketserver
